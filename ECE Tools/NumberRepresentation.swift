@@ -17,22 +17,67 @@ enum NumberRepresentation: String, CaseIterable, Identifiable {
 }
 
 struct NumberConverter {
+    // Helper function to clean input by removing whitespace
+    private static func cleanInput(_ value: String) -> String {
+        return value.replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "\t", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+    }
+    
     static func convert(from value: String, representation: NumberRepresentation, bitWidth: Int = 16) -> Int? {
+        let cleanedValue = cleanInput(value)
+        
         switch representation {
         case .decimal:
-            return Int(value)
+            return Int(cleanedValue)
         case .hex:
-            let cleanValue = value.replacingOccurrences(of: "0x", with: "").replacingOccurrences(of: "0X", with: "")
+            let cleanValue = cleanedValue
+                .replacingOccurrences(of: "0x", with: "")
+                .replacingOccurrences(of: "0X", with: "")
             guard let unsigned = Int(cleanValue, radix: 16) else { return nil }
             // Handle as signed value if necessary
             return signExtend(unsigned, bitWidth: bitWidth)
         case .binary:
-            let cleanValue = value.replacingOccurrences(of: "0b", with: "")
+            let cleanValue = cleanedValue.replacingOccurrences(of: "0b", with: "")
             return Int(cleanValue, radix: 2)
         case .twosComplement:
-            let cleanValue = value.replacingOccurrences(of: "0b", with: "")
+            let cleanValue = cleanedValue.replacingOccurrences(of: "0b", with: "")
             guard let unsigned = Int(cleanValue, radix: 2) else { return nil }
             return signExtend(unsigned, bitWidth: bitWidth)
+        }
+    }
+    
+    static func validateBitWidth(value: String, representation: NumberRepresentation, bitWidth: Int) -> String? {
+        let cleanedValue = cleanInput(value)
+        
+        switch representation {
+        case .decimal:
+            guard let intValue = Int(cleanedValue) else { return nil }
+            let maxValue = (1 << (bitWidth - 1)) - 1
+            let minValue = -(1 << (bitWidth - 1))
+            if intValue > maxValue || intValue < minValue {
+                return "Value \(intValue) exceeds \(bitWidth)-bit range [\(minValue), \(maxValue)]"
+            }
+            return nil
+            
+        case .hex:
+            let cleanValue = cleanedValue
+                .replacingOccurrences(of: "0x", with: "")
+                .replacingOccurrences(of: "0X", with: "")
+            guard !cleanValue.isEmpty else { return nil }
+            let bitsNeeded = cleanValue.count * 4
+            if bitsNeeded > bitWidth {
+                return "Input requires \(bitsNeeded) bits but only \(bitWidth) bits selected"
+            }
+            return nil
+            
+        case .binary, .twosComplement:
+            let cleanValue = cleanedValue.replacingOccurrences(of: "0b", with: "")
+            guard !cleanValue.isEmpty else { return nil }
+            if cleanValue.count > bitWidth {
+                return "Input has \(cleanValue.count) bits but only \(bitWidth) bits selected"
+            }
+            return nil
         }
     }
     

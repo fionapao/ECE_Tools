@@ -25,6 +25,16 @@ class CalculatorViewModel {
     var operation: Operation = .add
     var bitWidth: Int = 16
     
+    var operand1Warning: String? {
+        guard !operand1Text.isEmpty else { return nil }
+        return NumberConverter.validateBitWidth(value: operand1Text, representation: operand1Rep, bitWidth: bitWidth)
+    }
+    
+    var operand2Warning: String? {
+        guard !operand2Text.isEmpty else { return nil }
+        return NumberConverter.validateBitWidth(value: operand2Text, representation: operand2Rep, bitWidth: bitWidth)
+    }
+    
     var result: String {
         guard let value1 = NumberConverter.convert(from: operand1Text, representation: operand1Rep, bitWidth: bitWidth) else {
             return "Invalid Input 1"
@@ -84,6 +94,12 @@ class CalculatorViewModel {
 
 struct CalculatorView: View {
     @State private var viewModel = CalculatorViewModel()
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case operand1
+        case operand2
+    }
     
     var body: some View {
         Form {
@@ -113,6 +129,17 @@ struct CalculatorView: View {
                 TextField("Enter first operand", text: $viewModel.operand1Text)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(.body, design: .monospaced))
+                    .focused($focusedField, equals: .operand1)
+                    .submitLabel(.done)
+                    .onSubmit {
+                        focusedField = nil
+                    }
+                
+                if let warning = viewModel.operand1Warning {
+                    Label(warning, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
             }
             
             if viewModel.operation != .invert {
@@ -126,6 +153,17 @@ struct CalculatorView: View {
                     TextField("Enter second operand", text: $viewModel.operand2Text)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
+                        .focused($focusedField, equals: .operand2)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            focusedField = nil
+                        }
+                    
+                    if let warning = viewModel.operand2Warning {
+                        Label(warning, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                 }
             }
             
@@ -157,29 +195,6 @@ struct CalculatorView: View {
                             .font(.system(.body, design: .monospaced))
                             .textSelection(.enabled)
                     }
-                }
-            }
-            
-            Section("Examples") {
-                Button("Example: 5 + 3") {
-                    viewModel.operation = .add
-                    viewModel.operand1Text = "5"
-                    viewModel.operand2Text = "3"
-                    viewModel.operand1Rep = .decimal
-                    viewModel.operand2Rep = .decimal
-                }
-                Button("Example: 0xFF - 0x01") {
-                    viewModel.operation = .subtract
-                    viewModel.operand1Text = "0xFF"
-                    viewModel.operand2Text = "0x01"
-                    viewModel.operand1Rep = .hex
-                    viewModel.operand2Rep = .hex
-                }
-                Button("Example: Invert 0b1010") {
-                    viewModel.operation = .invert
-                    viewModel.operand1Text = "0b1010"
-                    viewModel.operand1Rep = .binary
-                    viewModel.bitWidth = 8
                 }
             }
         }
